@@ -1,4 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
+const { generateImage } = require('../../helpers/canvasHelper');
 
 const fs = require('node:fs');
 const data = fs.readFileSync('players.json', 'utf8');
@@ -10,6 +11,7 @@ module.exports = {
         .setDescription('Randomly creates balanced teams based on players\' preferred roles.'),
 
     async execute(interaction) {
+        await interaction.deferReply();
 
         const requiredRoles = {
             tank: 2,
@@ -22,8 +24,6 @@ module.exports = {
         // Build both maps
         for (let player in players) {
             const roles = players[player].roles;
-
-            playerRoles.set(player, new Set(roles));
 
             for (let role of roles) {
                 if (!rolePlayers.has(role)) {
@@ -63,7 +63,8 @@ module.exports = {
         console.log(team_B);
         console.log()
 
-        await interaction.reply('Sucessfully Generated Teams');
+        const imageAttachment = await generateImage(team_A, team_B);
+        await interaction.editReply({ files : [imageAttachment] });
     },
 };
 
