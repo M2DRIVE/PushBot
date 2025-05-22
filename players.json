@@ -1,0 +1,42 @@
+{
+    "piitudo": {
+        "roles": ["tank", "dps"],
+        "battletag": "PollitoPio#11978"
+    },
+    "ultraoof.": {
+        "roles": ["tank", "dps", "support"],
+        "battletag": "Ultra#12448"
+    },
+    "mangogus": {
+        "roles": ["tank", "support"],
+        "battletag": ""
+    },
+    "raine6106": {
+        "roles": ["tank", "dps", "support"],
+        "battletag": "BlueChicken0827#11427"
+    },
+    "kyr5232": {
+        "roles": ["tank", "dps"],
+        "battletag": "Kyr#11884"
+    },
+    "pebsiman": {
+        "roles": ["tank", "dps"],
+        "battletag": "Pebsicant#1604"
+    },
+    "agentOf55": {
+        "roles": ["tank", "dps", "support"],
+        "battletag": "agentOf55#0000"
+    },
+    "undeterred.nerd": {
+        "roles": ["tank", "dps", "support"],
+        "battletag": "HairyBallock#1482"
+    },
+    "enderf1ame": {
+        "roles": ["dps", "support"],
+        "battletag": "Sageflower9#11608"
+    },
+    "rahul.rahul": {
+        "roles": ["tank", "dps", "support"],
+        "battletag": "OblivionPlay#1914"
+    }
+}
