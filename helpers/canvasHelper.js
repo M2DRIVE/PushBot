@@ -1,5 +1,5 @@
 const { AttachmentBuilder } = require('discord.js');
-const Canvas = require('@napi-rs/canvas');
+const { registerFont, createCanvas, loadImage } = require('canvas');
 const axios = require('axios');
 
 const fs = require('node:fs');
@@ -8,16 +8,33 @@ const data = fs.readFileSync('players.json', 'utf8');
 const players = JSON.parse(data);
 
 async function generateImage(team_A, team_B) {
-    const canvas = Canvas.createCanvas(3840, 2160);
+    const canvas = createCanvas(3840, 2160);
     const context = canvas.getContext('2d');
 
+    registerFont('./fonts/big_noodle_titling.ttf', { family: 'Overwatch' });
+    registerFont('./fonts/big_noodle_titling_oblique.ttf', { family: 'Overwatch_Oblique' });
+
     const imagePath = getRandomImagePath(path.join(__dirname, '../images/backgrounds'));
-    const background = await Canvas.loadImage(imagePath);
+    const background = await loadImage(imagePath);
 
     context.drawImage(background, 0, 0, canvas.width, canvas.height);
+    context.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    context.fillRect(0, 0, 3840, 2160)
     context.fillStyle = 'white';
     context.fillRect(128, 264, 1318, 128);
     context.fillRect(2395, 264, 1318, 128);
+
+    context.fillStyle = 'blue';
+    context.font = '45px Overwatch';
+    context.textAlign = 'right';
+    context.textBaseline = 'middle';
+    context.fillText('TEAM 1', 1358, 328);
+
+    context.fillStyle = 'red';
+    context.font = '45px Overwatch';
+    context.textAlign = 'left';
+    context.textBaseline = 'middle';
+    context.fillText('TEAM 2', 2425, 328);
 
     // Team A
     const roleOrder = ['tank', 'dps', 'support'];
@@ -26,16 +43,29 @@ async function generateImage(team_A, team_B) {
         const playersInRole= team_A.get(role);
 
         for(let player of playersInRole) {
-            const namecardImg = getAPIimage(players[player].battletag, 'namecard');
-            const avatarImg = getAPIimage(players[player].battletag, 'avatar');
-
+            const namecardImg = await getAPIimage(players[player].battletag, 'namecard');
+            const avatarImg = await getAPIimage(players[player].battletag, 'avatar');
+            
+            context.fillStyle = 'rgb(33,33,33)';
+            context.fillRect(128, 196+y_val, 980, 50);
             context.drawImage(namecardImg, 128, y_val, 981, 196);
-            context.drawImage(avatarImg, 980, y_val, 246, 246);
+            context.drawImage(avatarImg, 1108, y_val, 246, 246);
+
+            context.font = '90px Overwatch_Oblique';
+            context.fillStyle = 'white';
+            context.textAlign = 'right';
+            context.textBaseline = 'middle';
+
+            const textY = y_val - 25 + namecardImg.height/2;
+
+            context.fillText(players[player].battletag.split('#')[0], 1050, textY);
+
             y_val += 275;
         }
     }
 
-    return new AttachmentBuilder(await canvas.encode('png'), { name: 'teams.png' });
+    const buffer = canvas.toBuffer('image/png');
+    return new AttachmentBuilder(buffer, { name: 'teams.png' });
 }
 
 /**
@@ -54,21 +84,20 @@ function getRandomImagePath(folderPath) {
 async function getAPIimage(battleTag, element) {
     try {
         const formattedTag = battleTag.replace('#', '-');
-        console.log(formattedTag);
-        const response = await axios.get(`https://overfast-api.tekrop.fr/${formattedTag}/summary`);
+        const response = await axios.get(`https://overfast-api.tekrop.fr/players/${formattedTag}/summary`);
         let elementURL;
         switch(element) {
             case 'namecard' : elementURL = response.data.namecard; break;
             case 'avatar' : elementURL = response.data.avatar; break
         }
-        const imageResposne = await axios.get(elementURL, { responseType: 'arraybuffer'});
-        const imageBuffer = Buffer.from(imageResposne.data, 'binary');
-        return await Canvas.loadImage(imageBuffer);
+        const imageResponse = await axios.get(elementURL, { responseType: 'arraybuffer'});
+        const base64Image = `data:image/png;base64,${Buffer.from(imageResponse.data, 'binary').toString('base64')}`;
+        return await loadImage(base64Image);
     } catch (error) {
-        console.error('Error fetching namecard for' + battleTag);
-        return null;
+        return loadImage(path.join(__dirname,`../images/assets/default_${element}.png`));
     }
 }
+
 module.exports = {
     generateImage
 }
