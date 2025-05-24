@@ -1,5 +1,5 @@
 const { AttachmentBuilder } = require('discord.js');
-const { registerFont, createCanvas, loadImage } = require('canvas');
+const { registerFont, createCanvas, loadImage, Image } = require('canvas');
 const axios = require('axios');
 
 const fs = require('node:fs');
@@ -12,18 +12,44 @@ async function generateImage(team_A, team_B) {
     const context = canvas.getContext('2d');
 
     registerFont('./fonts/big_noodle_titling_oblique.ttf', { family: 'Overwatch_Oblique' });
+    const roleOrder = ['tank', 'dps', 'support'];
+    const radius = 20;
 
-    const imagePath = getRandomImagePath(path.join(__dirname, '../images/backgrounds'));
-    const background = await loadImage(imagePath);
+    // Background
+    // const imagePath = getRandomImagePath(path.join(__dirname, '../images/backgrounds'));
+    // const background = await loadImage(imagePath);
+    const map = await getRandomMap();
+    const imageResponse = await axios.get(map.screenshot, { responseType: 'arraybuffer' });
+    const base64Image = `data:image/png;base64,${Buffer.from(imageResponse.data, 'binary').toString('base64')}`;
+    const background = await loadImage(base64Image);
     context.drawImage(background, 0, 0, canvas.width, canvas.height);
     context.fillStyle = 'rgba(0, 0, 0, 0.6)';
     context.fillRect(0, 0, 3840, 2160)
+
+    // Map Data
+    context.textAlign = 'right';
+    context.textBaseline = 'top';
+    context.font = 'bold italic 60px Overwatch_Oblique';
+    context.fillStyle = 'rgb(237, 101, 22)';
+    const gamemode = map.gamemodes[0];
+    context.fillText(gamemode, 3436, 1859);
+    context.font = 'bold italic 155px Overwatch_Oblique';
+    context.fillStyle = 'white';
+    context.fillText(map.name, 3411, 1923 - 25);
+    const textWidth = context.measureText(map.name).width;
+    const flag_img = await getFlagImg(map.country_code);
+    context.drawImage(flag_img, 3411 - textWidth - flag_img.width - 65, 1940, 118, 118);
+
+    // Overwatch Logo
+    const logo = await loadImage('./images/assets/logo.png');
+    context.drawImage(logo, 3488, 1856, 188, 188);
+
+    // VS Text
     context.fillStyle = 'white';
     context.textAlign = 'center';
     context.textBaseline = 'middle';
     context.font = 'bold italic 250px Overwatch_Oblique'
     context.fillText('VS', canvas.width / 2, canvas.height / 2);
-    const radius = 20;
 
     // Team A
 
@@ -36,7 +62,6 @@ async function generateImage(team_A, team_B) {
     const team1Img = await loadImage('./images/assets/team1.png');
     context.drawImage(team1Img, 1135, 304, 210, 35);
 
-    const roleOrder = ['tank', 'dps', 'support'];
     let y_val = 410;
     for (let role of roleOrder) {
         const playersInRole = team_A.get(role);
@@ -76,7 +101,7 @@ async function generateImage(team_A, team_B) {
             context.fillText(players[player].battletag.split('#')[0], 1050, textY);
 
             // Player Role Card 
-            roundRectPath(context, 128, 196 + y_val, 980, 50, radius, { tl: false, tr: false, br: false, bl: true });
+            roundRectPath(context, 128, 196 + y_val, 980, 51, radius, { tl: false, tr: false, br: false, bl: true });
             context.fillStyle = 'rgb(33,33,33)';
             context.fill();
             context.fillStyle = 'white';
@@ -148,7 +173,7 @@ async function generateImage(team_A, team_B) {
             context.fillText(players[player].battletag.split('#')[0], 2604 + 128 + 30, textY);
 
             // Player Role Card
-            roundRectPath(context, 2604 + 128, 196 + y_val, 980, 50, radius, { tl: false, tr: false, br: true, bl: false });
+            roundRectPath(context, 2604 + 128, 196 + y_val, 980, 51, radius, { tl: false, tr: false, br: true, bl: false });
             context.fillStyle = 'rgb(33,33,33)';
             context.fill();
             context.fillStyle = 'white';
@@ -175,6 +200,40 @@ async function generateImage(team_A, team_B) {
 }
 
 /**
+ * Fetches map from API and returns a randomly chosen map.
+ * 
+ * @returns {Promise<Map>} Chosen map
+ */
+async function getRandomMap() {
+    try {
+        const response = await axios.get('https://overfast-api.tekrop.fr/maps');
+        const randomMap = response.data[Math.floor(Math.random() * response.data.length)];
+
+        return randomMap;
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+/**
+ * Fetches flag image based on two char-length flag code.
+ * 
+ * @param {string} flag_code String of length two
+ * @returns {Promise<Image>} Image of flag
+ */
+async function getFlagImg(flag_code) {
+    try {
+        const url = `https://flagsapi.com/${flag_code}/flat/64.png`;
+        const response = await axios.get(url, { responseType: 'arraybuffer' });
+
+        return await loadImage(Buffer.from(response.data));;
+    } catch (error) {
+        console.error('Error loading flag image:', error.message);
+        return await loadImage('./images/assets/empty_flag.png');
+    }
+}
+
+/**
  * Picks a random image file from a folder
  * @param {string} folderPath Path to the image folder
  * @returns {string} Full path to the selected image
@@ -187,6 +246,14 @@ function getRandomImagePath(folderPath) {
     return path.join(folderPath, files[randomIndex]);
 }
 
+/**
+ * Fetches and returns an Image object from Overfast API for a given BattleTag and element type.
+ * Falls back to a local default image if fetching fails.
+ *
+ * @param {string} battleTag The player's BattleTag (e.g., "Player#1234").
+ * @param {('namecard'|'avatar')} element The type of image to fetch ("namecard" or "avatar").
+ * @returns {Promise<Image>}  A Promise that resolves to a loaded Image object.
+ */
 async function getAPIimage(battleTag, element) {
     try {
         const formattedTag = battleTag.replace('#', '-');
