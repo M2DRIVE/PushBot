@@ -74,10 +74,10 @@ async function generateImage(team_A, team_B) {
 
             // Player Namecard
             const namecardImg = await getAPIimage(players[player].battletag, 'namecard');
-            roundRectPath(context, 128, y_val, 981, 196, radius, { tl: true, tr: false, br: false, bl: false });
+            roundRectPath(context, 128, y_val, 979, 196, radius, { tl: true, tr: false, br: false, bl: false });
             context.save();
             context.clip();
-            context.drawImage(namecardImg, 128, y_val, 981, 196);
+            context.drawImage(namecardImg, 128, y_val, 979, 196);
             context.restore();
 
             const gradient = context.createLinearGradient(128, y_val, 128 + 981, y_val);
@@ -146,10 +146,10 @@ async function generateImage(team_A, team_B) {
 
             // Player Namecard
             const namecardImg = await getAPIimage(players[player].battletag, 'namecard');
-            roundRectPath(context, 2604 + 128, y_val, 981, 196, radius, { tl: false, tr: true, br: false, bl: false });
+            roundRectPath(context, 2604 + 128, y_val, 979, 196, radius, { tl: false, tr: true, br: false, bl: false });
             context.save();
             context.clip();
-            context.drawImage(namecardImg, 2604 + 128, y_val, 981, 196);
+            context.drawImage(namecardImg, 2604 + 128, y_val, 979, 196);
             context.restore();
 
             const gradient = context.createLinearGradient(2604 + 128, y_val, 2604 + 128 + 981, y_val);
