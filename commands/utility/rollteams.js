@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { generateImage } = require('../../helpers/canvasHelper');
 
 const fs = require('node:fs');
@@ -25,7 +25,7 @@ module.exports = {
         const playerMap = new Map(Object.entries(players));
         let activePlayers = playerMap;
         let spectator = undefined;
-        if(spectatorPresent) {
+        if (spectatorPresent) {
             const safeSpectators = getSafeSpectators(playerMap, requiredRoles);
             // Unlikely scenario with good team role queues
             if (safeSpectators.length === 0) {
@@ -81,7 +81,8 @@ module.exports = {
         console.log('SPECTATOR: ' + spectator);
 
         const imageAttachment = await generateImage(team_A, team_B, spectator);
-        await interaction.editReply({ files: [imageAttachment] });
+        const row = getButtons();
+        await interaction.editReply({ files: [imageAttachment], components: [row] });
     },
 };
 
@@ -187,4 +188,26 @@ function isValidTeam(team, requiredRoles) {
     }
 
     return true;
+}
+
+/**
+ * Creates the interaction buttons and returns the ActionRowBuilder with those buttons
+ * 
+ * @returns { ActionRowBuilder } row with buttons
+ */
+function getButtons() {
+    const splitvc = new ButtonBuilder()
+        .setCustomId('splitvc')
+        .setLabel('🔊 Split VC')
+        .setStyle(ButtonStyle.Primary);
+
+    const reroll = new ButtonBuilder()
+        .setCustomId('reroll')
+        .setLabel('🔁 Re-roll')
+        .setStyle(ButtonStyle.Secondary);
+
+    const row = new ActionRowBuilder()
+        .addComponents(splitvc, reroll);
+
+    return row;
 }
