@@ -7,7 +7,7 @@ const path = require('node:path');
 const data = fs.readFileSync('players.json', 'utf8');
 const players = JSON.parse(data);
 
-async function generateImage(team_A, team_B) {
+async function generateImage(team_A, team_B, spectator) {
     const canvas = createCanvas(3840, 2160);
     const context = canvas.getContext('2d');
 
@@ -195,6 +195,60 @@ async function generateImage(team_A, team_B) {
         }
     }
 
+    // Spectator 
+    if (spectator !== undefined) {
+        // Spectator Avatar
+        const avatarImg = await getAPIimage(players[spectator].battletag, 'avatar');
+        const monotoneAvatarImg = await getMonotoneImage(avatarImg, [100, 100, 100]);
+        context.drawImage(monotoneAvatarImg, 1109, 1785, 246, 246);
+
+        // Player Namecard
+        const namecardImg = await getAPIimage(players[spectator].battletag, 'namecard');
+        const monotoneNameCardImg = await getMonotoneImage(namecardImg, [100, 100, 100]);
+        roundRectPath(context, 128, 1785, 979, 196, radius, { tl: true, tr: false, br: false, bl: false });
+        context.save();
+        context.clip();
+        context.drawImage(monotoneNameCardImg, 128, 1785, 979, 196);
+        context.restore();
+
+        const gradient = context.createLinearGradient(128, 1785, 128 + 981, 1785);
+        const steps = 20;
+        for (let i = 0; i <= steps; i++) {
+            const t = i / steps;
+            const alpha = Math.pow(t, 3);
+            gradient.addColorStop(t, `rgba(0, 0, 0, ${alpha * 0.4})`);
+        }
+
+        roundRectPath(context, 128, 1785, 981, 196, radius, { tl: true, tr: false, br: false, bl: false });
+        context.fillStyle = gradient;
+        context.fill();
+
+        // Player Name
+        context.font = 'bold italic 130px Overwatch_Oblique';
+        context.fillStyle = 'white';
+        context.textAlign = 'right';
+        context.textBaseline = 'middle';
+        const textY = 1785 - 25 + namecardImg.height / 2;
+        context.fillText(players[spectator].battletag.split('#')[0], 1050, textY);
+
+        // Player Role Card 
+        roundRectPath(context, 128, 196 + 1785, 980, 51, radius, { tl: false, tr: false, br: false, bl: true });
+        context.fillStyle = 'rgb(33,33,33)';
+        context.fill();
+        context.fillStyle = 'white';
+        context.font = 'bold 30px Sans';
+        context.textAlign = 'left';
+        context.textBaseline = 'middle';
+        context.fillText('SPECTATOR', 128 + 30, 196 + 1785 + 25);
+
+        // Player Role Icon 
+        roundRectPath(context, 1353, 1785, 93, 246, radius, { tl: false, tr: true, br: true, bl: false });
+        context.fillStyle = 'rgb(70, 70, 70)';
+        context.fill();
+        const roleIcon = await loadImage(path.join(__dirname, `../images/assets/spectator.png`));
+        context.drawImage(roleIcon, 1366, 1893, 66, 50);
+    }
+
     const buffer = canvas.toBuffer('image/png');
     return new AttachmentBuilder(buffer, { name: 'teams.png' });
 }
@@ -303,6 +357,25 @@ function roundRectPath(ctx, x, y, width, height, radius, corners = { tl: true, t
     else ctx.lineTo(x, y);
 
     ctx.closePath();
+}
+
+async function getMonotoneImage(img, tint) {
+    const canvas = createCanvas(img.width, img.height);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+
+    const imageData = ctx.getImageData(0, 0, img.width, img.height);
+    const data = imageData.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+        const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+        data[i] = (avg / 255) * tint[0];
+        data[i + 1] = (avg / 255) * tint[1];
+        data[i + 2] = (avg / 255) * tint[2];
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+    return canvas;
 }
 
 module.exports = {

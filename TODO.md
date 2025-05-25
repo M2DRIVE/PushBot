@@ -15,3 +15,4 @@
 - [x] Image manipulation for team chart
     - [x] Integrate Overfast API
 - [x] Random Map Picker
+- [x] Spectator Mode

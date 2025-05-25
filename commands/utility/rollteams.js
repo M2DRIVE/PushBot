@@ -5,6 +5,8 @@ const fs = require('node:fs');
 const data = fs.readFileSync('players.json', 'utf8');
 const players = JSON.parse(data);
 
+const spectatorPresent = true;
+
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('rollteams')
@@ -19,12 +21,26 @@ module.exports = {
             support: 4
         };
 
+        // Pick Spectator
+        const playerMap = new Map(Object.entries(players));
+        let activePlayers = playerMap;
+        let spectator = undefined;
+        if(spectatorPresent) {
+            const safeSpectators = getSafeSpectators(playerMap, requiredRoles);
+            // Unlikely scenario with good team role queues
+            if (safeSpectators.length === 0) {
+                await interaction.reply('❌ No valid spectator could be chosen without breaking team roles.');
+                return;
+            }
+            spectator = safeSpectators[Math.floor(Math.random() * safeSpectators.length)];
+            activePlayers = new Map([...playerMap].filter(([key, value]) => key !== spectator));
+        }
+
+        // Build rolePlayers
         const rolePlayers = new Map();
 
-        // Build both maps
-        for (let player in players) {
+        for (let player of activePlayers.keys()) {
             const roles = players[player].roles;
-
             for (let role of roles) {
                 if (!rolePlayers.has(role)) {
                     rolePlayers.set(role, new Set());
@@ -62,11 +78,54 @@ module.exports = {
         console.log('TEAM B');
         console.log(team_B);
         console.log()
+        console.log('SPECTATOR: ' + spectator);
 
-        const imageAttachment = await generateImage(team_A, team_B);
-        await interaction.editReply({ files : [imageAttachment] });
+        const imageAttachment = await generateImage(team_A, team_B, spectator);
+        await interaction.editReply({ files: [imageAttachment] });
     },
 };
+
+/**
+ * Returns a list of player names who, if removed, will not create vacancy slots for any required role
+ * 
+ * @param {*} playerMap Map of players.json containing all players
+ * @param {*} requiredRoles number of players needed per role
+ * @returns The names of safe to spectate players
+ */
+function getSafeSpectators(playerMap, requiredRoles) {
+    const safeSpectators = [];
+
+    const playerNames = Object.keys(players);
+
+    for (const candidate of playerNames) {
+        // Simulate removing this player
+        const active = playerNames.filter(p => p !== candidate);
+        const roles = new Map();
+
+        for (const player of active) {
+            for (const role of playerMap.get(player).roles) {
+                if (!roles.has(role)) roles.set(role, []);
+                roles.get(role).push(player);
+            }
+        }
+
+        // Check if enough players for each role
+        let isSafe = true;
+        for (const [role, required] of Object.entries(requiredRoles)) {
+            if ((roles.get(role) || []).length < required) {
+                isSafe = false;
+                break;
+            }
+        }
+
+        // Player is safe to spectate, add to list
+        if (isSafe) {
+            safeSpectators.push(candidate);
+        }
+    }
+
+    return safeSpectators;
+}
 
 /**
  * Creates a map of an Overwatch team.
@@ -117,12 +176,12 @@ function fillRole(role, team, rolePlayers) {
  * @returns {boolean} true if team has right number of players and no undefined values, false otherwise.
  */
 function isValidTeam(team, requiredRoles) {
-    for(const role of team.keys()) {
-        if(team.get(role).has(undefined)) {
+    for (const role of team.keys()) {
+        if (team.get(role).has(undefined)) {
             return false;
         }
-        
-        if(team.get(role).size !== requiredRoles[role]/2) {
+
+        if (team.get(role).size !== requiredRoles[role] / 2) {
             return false;
         }
     }
